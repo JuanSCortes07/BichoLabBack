@@ -12,7 +12,7 @@ class VertexModel:
         # Configura el proyecto de Google Cloud y el endpoint de Vertex AI
         PROJECT_ID="insect-clasification"
         LOCATION="us-central1"
-        credentials = get_gcp_credentials(credentials_file="config/credentials.json")
+        credentials = get_gcp_credentials(credentials_file="config/insect-clasification-fc57888c0cfe.json")
         vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=credentials)
         
     def classification(image_bytes: bytes):
