@@ -1,10 +1,6 @@
-import os.path
-
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Image
-from google.auth import default
-from google.oauth2 import service_account
-from google.auth.exceptions import DefaultCredentialsError
+from app.auth import get_gcp_credentials
 
 class VertexModel:
 
@@ -12,7 +8,7 @@ class VertexModel:
         # Configura el proyecto de Google Cloud y el endpoint de Vertex AI
         PROJECT_ID="insect-clasification"
         LOCATION="us-central1"
-        credentials = get_gcp_credentials(credentials_file="config/insect-clasification-fc57888c0cfe.json")
+        credentials = get_gcp_credentials(credentials_file="config\\insect-clasification-d686ee26e0a3.json")
         vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=credentials)
         
     def classification(image_bytes: bytes):
@@ -48,25 +44,7 @@ class VertexModel:
         response = gemini.generate_content([insect_name])
         return response.text.replace("```", "").replace("json", "").replace("\n", "").rstrip()
 
-def get_gcp_credentials(credentials_file=None):
-        """
-        Retrieves GCP credentials to initialize the Vertex AI client.
-        """
-        try:
-            if credentials_file and os.path.exists(credentials_file):
-                print(f"Using credentials file: {credentials_file}")
-                credentials = service_account.Credentials.from_service_account_file(credentials_file)
-            else:
-                print("Using default credentials")
-                credentials, _ = default()
-            return credentials
-        except FileNotFoundError as e:
-            print(f"Credentials file '{credentials_file}' not found.")
 
-        except DefaultCredentialsError as e:
-            print("Unable to obtain default credentials. Ensure that the environment "
-                                        "is properly configured.")
-            return None
 
 
 

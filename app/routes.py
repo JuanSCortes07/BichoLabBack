@@ -60,14 +60,14 @@ async def auth_callback(request: Request, db=Depends(get_database)):
     user_info =  user_response["userinfo"]
 
     email = user_info["email"]
-    #user = await db["users"].find_one({"email": email})
     user = await db.collection("users").where("email", "==", email).get()
 
-    if not user:
-        # Si el usuario no existe, lo creamos en MongoDB
-        new_user = User(email=email, name= user_info["name"])
-        #await db["users"].insert_one(new_user.model_dump(mode='json'))
-        user_ref = await db.collection("users").add(new_user.model_dump(mode='json'))
+    if user:
+        return {"message": "Usuario inició sesión correctamente", "id": user[0].id}
+
+    # Si el usuario no existe, lo creamos en Firestore
+    new_user = User(email=email, name= user_info["name"])
+    user_ref = await db.collection("users").add(new_user.model_dump(mode='json'))
 
     return {"message": "Usuario agregado correctamente", "id": user_ref[1].id}
 
