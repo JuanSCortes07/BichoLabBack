@@ -1,9 +1,10 @@
 from google.cloud import firestore
 from google.cloud import storage
 from app.auth import get_gcp_credentials
+from pathlib import Path
 
 BUCKET_NAME = "insects_id"
-credentials_data = get_gcp_credentials(credentials_file="config\\insect-clasification-fc57888c0cfe.json")
+credentials_data = get_gcp_credentials(credentials_file=str(Path("config") / "insect-clasification-fc57888c0cfe.json"))
 
 # Inicializa la conexión a Firestore
 async def get_database():
