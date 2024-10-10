@@ -34,6 +34,11 @@ class User(BaseModel):
     name: str
     insects: List[str] = []
 
+class UserSignin(BaseModel):
+    username: str
+    password: str
+    insects: List[str] = []
+
 class Comment(BaseModel):
     author_id: str
     commment: str
@@ -44,8 +49,3 @@ class Post(BaseModel):
     author_id: str  # Referencia al usuario
     user_insect_id: str
     comments: List[Comment] = []  # Lista de comentarios
-
-
-
-
-

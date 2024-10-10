@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, File, UploadFile
 from fastapi.responses import StreamingResponse
-from app.models import Insect, User, Post, UserInsect, Comment
+from app.models import Post, UserInsect, Comment, UserSignin
 from app.database import get_database, get_bucket
 from app.classification import VertexModel
-from app.auth import oauth, oauth2_scheme, get_decode
-from authlib.oauth2.rfc6749 import OAuth2Token
 from google.cloud.firestore import FieldFilter,ArrayUnion,ArrayRemove
 import json
 import requests
@@ -43,33 +41,28 @@ async def classify_insect(image: UploadFile = File(...), db=Depends(get_database
     print('retorne aca')
     return {"_id":added_insect_doc.id, "data": added_insect_doc.to_dict()}
         
+
+@router.post("/auth/signin")
+async def auth_signin(user: UserSignin, db =Depends(get_database)):
+
+    existing_user= await db.collection("users").where(filter=FieldFilter("username","==",user.username)).get()
+    if existing_user:
+        existing_user_dict = existing_user[0].to_dict()
+        if user.password == existing_user_dict["password"]:
+            return {"id": existing_user[0].id}
     
+    return {"message":"SignIn error, We can't sign in you with this credentials"}
 
-# Ruta para redirigir al login de Google
-@router.get("/auth/login")
-async def login_via_google(request: Request):
-    redirect_uri = "http://localhost:5000/auth/callback"  # Debe coincidir con el URI de redirección de Google
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+@router.post("/auth/signup")
+async def auth_signin(user: UserSignin, db =Depends(get_database)):
 
+    existing_user= await db.collection("users").where(filter=FieldFilter("username","==",user.username)).get()
+    if existing_user:
+        return {"message":"SignUp error, username is already in use"}
+    
+    user_ref = await db.collection("users").add(user.model_dump(mode='json'))
+    return {"id": user_ref[1].id}
 
-# Ruta de redirección para procesar la respuesta de Google
-@router.get("/auth/callback")
-async def auth_callback(request: Request, db=Depends(get_database)):
-    user_response: OAuth2Token = await oauth.google.authorize_access_token(request)
-
-    user_info =  user_response["userinfo"]
-
-    email = user_info["email"]
-    user = await db.collection("users").where("email", "==", email).get()
-
-    if user:
-        return {"message": "Usuario inició sesión correctamente", "id": user[0].id}
-
-    # Si el usuario no existe, lo creamos en Firestore
-    new_user = User(email=email, name= user_info["name"])
-    user_ref = await db.collection("users").add(new_user.model_dump(mode='json'))
-
-    return {"message": "Usuario agregado correctamente", "id": user_ref[1].id}
 
 @router.post("/insects/upload/image/")
 async def upload_insect_image(image: UploadFile = File(...), bucket = Depends(get_bucket)):
@@ -101,6 +94,15 @@ async def download_insect_image(image_name: str, bucket = Depends(get_bucket)):
     image_stream = BytesIO(image_bytes)
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
+@router.get("/insects/{insect_id}")
+async def get_insect(insect_id: str, db=Depends(get_database)):
+        
+    existing_insect= await db.collection("insects").document(insect_id).get()
+    if not existing_insect.exists:
+        return {"message": "insect doesn't exists with this id"}
+    
+    return {"_id":insect_id,"data":existing_insect.to_dict()}
+
 @router.post("/users/{user_id}/insects/add")
 async def save_insect_for_user(user_id: str, user_insect: UserInsect, db=Depends(get_database)):
     
@@ -112,7 +114,6 @@ async def save_insect_for_user(user_id: str, user_insect: UserInsect, db=Depends
     await db.collection("users").document(user_id).update({
         "insects": ArrayUnion([user_insect_id])
     })
-
     return {"message": f"Insecto guardado exitosamente {user_insect_id}"}
 
 @router.delete("/users/{user_id}/insects/delete")
@@ -133,7 +134,7 @@ async def get_insects_for_user(user_id: str, db=Depends(get_database)):
     user_data = user_doc.to_dict()
     user_insect_ids = user_data.get("insects", [])
     list_user_insects_db = [await db.collection("user_insects").document(user_insect_id).get() for user_insect_id in user_insect_ids]
-    list_user_insects_dict = [insect.to_dict() for insect in list_user_insects_db if insect.exists]
+    list_user_insects_dict = [{"_id":insect.id,"data":insect.to_dict()} for insect in list_user_insects_db if insect.exists]
     return list_user_insects_dict
 
 @router.post("/forum/post/")
